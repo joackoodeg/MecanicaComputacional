@@ -43,20 +43,22 @@ fprintf('Error maximo (lineal,    %d elem): %.3e\n', Nelem, err_lin);
 fprintf('Error maximo (cuadratica, %d elem): %.3e\n', Nelem, err_cuad);
 
 % ===================== 2) Chequeo temporal (3 esquemas, lineal) ===============
-% Malla fina (dx=0.1) con k=2, rho*cp=1 -> estabilidad explicita requiere
-% dt <~ dx^2/(2*k/(rho*cp)) = 0.01/4 = 0.0025. Usamos dt=0.002.
+% Forward Euler es condicionalmente estable; con matriz de masa consistente
+% el dt critico es bastante menor que la estimacion diferencias-finitas
+% dx^2/(2*alpha)=0.0025 (dt=0.002 diverge). Se usa un dt mucho mas chico.
 model.tipoFF = 1;
-dt     = 0.002;
-nPasos = 4000;
+dts    = [0.0005, 0.01, 0.01];
+nPasos = [15000,  1000, 1000];
 tol    = 1e-8;
 
 nombres = {'Forward Euler', 'Backward Euler', 'Crank-Nicolson'};
 colores = {'r', 'g', 'm'};
 T_final = zeros(Nelem+1, 3);
 
-fprintf('\n--- Esquemas temporales (dt=%.3g, tol=%.1e) ---\n', dt, tol);
+fprintf('\n--- Esquemas temporales (tol=%.1e) ---\n', tol);
 for s = 1:3
-  et = [s, nPasos, tol, dt];
+  dt = dts(s);
+  et = [s, nPasos(s), tol, dt];
   Thist = elemFinitos(xnode_lin, model, cb, et);
   T_final(:,s) = Thist(:,end);
   err = norm(T_final(:,s) - Tanalitica(xnode_lin)(:), Inf);
@@ -64,8 +66,8 @@ for s = 1:3
   if any(isnan(T_final(:,s))) || any(isinf(T_final(:,s))) || err > 10
     estado = 'DIVERGIO';
   endif
-  fprintf('%-16s pasos usados: %4d   error max vs analitica: %.3e   [%s]\n', ...
-          nombres{s}, size(Thist,2)-1, err, estado);
+  fprintf('%-16s dt=%.4g  pasos usados: %4d   error max vs analitica: %.3e   [%s]\n', ...
+          nombres{s}, dt, size(Thist,2)-1, err, estado);
 endfor
 
 % ===================== Graficos =====================

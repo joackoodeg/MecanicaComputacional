@@ -45,22 +45,23 @@ fprintf('Error maximo (cuadratica, %d elem): %.3e\n', Nelem, err_cuad);
 
 % ===================== 2) Chequeo temporal (3 esquemas, lineal) ===============
 model.tipoFF = 1;
-dt     = 0.05;
-nPasos = 4000;
+dts    = [0.01, 0.05, 0.05];   % Forward Euler necesita dt mas chico (estabilidad)
+nPasos = [3000, 2000, 2000];
 tol    = 1e-8;
 
 nombres = {'Forward Euler', 'Backward Euler', 'Crank-Nicolson'};
 colores = {'r', 'g', 'm'};
 T_final = zeros(Nelem+1, 3);
 
-fprintf('\n--- Esquemas temporales (dt=%.3g, tol=%.1e) ---\n', dt, tol);
+fprintf('\n--- Esquemas temporales (tol=%.1e) ---\n', tol);
 for s = 1:3
-  et = [s, nPasos, tol, dt];
+  dt = dts(s);
+  et = [s, nPasos(s), tol, dt];
   Thist = elemFinitos(xnode_lin, model, cb, et);
   T_final(:,s) = Thist(:,end);
   err = norm(T_final(:,s) - Tanalitica(xnode_lin)(:), Inf);
-  fprintf('%-16s pasos usados: %4d   error max vs analitica: %.3e\n', ...
-          nombres{s}, size(Thist,2)-1, err);
+  fprintf('%-16s dt=%.3g  pasos usados: %4d   error max vs analitica: %.3e\n', ...
+          nombres{s}, dt, size(Thist,2)-1, err);
 endfor
 
 % ===================== Graficos =====================

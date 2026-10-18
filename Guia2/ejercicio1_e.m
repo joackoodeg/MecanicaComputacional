@@ -69,7 +69,7 @@ yc = (y1+y2)/2;
 model.nnodes = nnodes;
 model.k = k_val * ones(nnodes,1);
 model.c = c_val * ones(nnodes,1);
-model.G = 10*xnode(:,1).^3;
+model.G = 100*xnode(:,1).^3;
 
 %% Datos para los esquemas temporales (necesarios porque rho*cp=1 en este item)
 model.rho = 1;
