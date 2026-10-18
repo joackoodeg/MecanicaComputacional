@@ -19,10 +19,6 @@ function [T] = elemFinitos(xnode, model, cb, et)
   %                 2 = funciones de forma cuadraticas
   %                 (si es cuadratico, cada elemento consume 3 nodos
   %                  consecutivos de xnode: [2e-1, 2e, 2e+1])
-  %                 Tambien puede ser un VECTOR con un valor por elemento
-  %                 para mezclar lineales y cuadraticos, p. ej. [1 2]:
-  %                 un lineal consume 2 nodos y un cuadratico 3, y los
-  %                 elementos vecinos comparten el nodo extremo.
   %
   % cb: matriz 2x3 de condiciones de borde
   %   cb(1,:) = borde izquierdo (x=L1), cb(2,:) = borde derecho (x=L2)
@@ -59,19 +55,7 @@ function [T] = elemFinitos(xnode, model, cb, et)
   endif
 
   % Conectividad de elementos segun el tipo de funcion de forma
-  if ~isscalar(tipoFF)
-    % Malla mixta: un tipo por elemento, el nodo inicial se lleva con un contador
-    Nelem  = length(tipoFF);
-    conect = cell(Nelem,1);
-    nod = 1;
-    for e = 1:Nelem
-      conect{e} = nod:(nod + tipoFF(e));
-      nod += tipoFF(e);
-    endfor
-    if nod ~= Nnod
-      error('xnode tiene %d nodos pero tipoFF necesita %d', Nnod, nod);
-    endif
-  elseif tipoFF == 1
+  if tipoFF == 1
     Nelem = Nnod - 1;
     conect = zeros(Nelem,2);
     for e = 1:Nelem
@@ -91,11 +75,7 @@ function [T] = elemFinitos(xnode, model, cb, et)
   F     = zeros(Nnod,1);
 
   for e = 1:Nelem
-    if iscell(conect)
-      nodos_e = conect{e};
-    else
-      nodos_e = conect(e,:);
-    endif
+    nodos_e = conect(e,:);
     xe = xnode(nodos_e)(:);
     [Ke, Se, Fe] = elemento_local(xe, model.k, Gfun);
     Kdiff(nodos_e,nodos_e) += Ke;
@@ -148,29 +128,20 @@ function [T] = elemFinitos(xnode, model, cb, et)
     tol    = et(3);
     dt     = et(4);
 
-    % Dirichlet: no se toca Ktot (se combina con M y reemplazar su fila
-    % no impondria T = valor). Se resuelven solo los nodos libres y la
-    % columna de cada nodo fijo, multiplicada por su valor, pasa al RHS.
-    fijos = [];
-    if cb(1,1) == 1, fijos(end+1) = 1;    endif
-    if cb(2,1) == 1, fijos(end+1) = Nnod; endif
-    libres = setdiff(1:Nnod, fijos);
+    % Se eliminan las filas Dirichlet de Ktot (igual criterio que en
+    % diferencias finitas: el valor correcto se reimpone en cada paso)
+    [Ktot_bc, F_bc] = aplicar_dirichlet(Ktot, F, cb, Nnod);
 
-    LHS  = M/dt + theta*Ktot;
-    Rmat = M/dt - (1-theta)*Ktot;
+    LHS = M/dt + theta*Ktot_bc;
 
     Tant = zeros(Nnod,1); % condicion inicial nula (T(x,0)=0)
     Tant = fijar_dirichlet(Tant, cb, Nnod);
     T = Tant;
 
     for n = 1:nPasos
-      RHS  = Rmat*Tant + F;
-      Tact = fijar_dirichlet(zeros(Nnod,1), cb, Nnod);
-      if isempty(fijos)
-        Tact = LHS\RHS;
-      else
-        Tact(libres) = LHS(libres,libres) \ (RHS(libres) - LHS(libres,fijos)*Tact(fijos));
-      endif
+      RHS = (M/dt - (1-theta)*Ktot_bc)*Tant + F_bc;
+      Tact = LHS\RHS;
+      Tact = fijar_dirichlet(Tact, cb, Nnod);
 
       T = [T, Tact];
       err = norm(Tact-Tant,2)/norm(Tact,2);
