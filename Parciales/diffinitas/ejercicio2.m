@@ -99,8 +99,7 @@ printf('\n1) dt = %g, pasos = %d, t estacionario = %.4f s\n', dt, nsteps, nsteps
 TP = @(x,y) Tf(node(round(x/h)+1, round(y/h)+1));
 printf('2) T(0.5,0.5) = %.4f\n', TP(0.5,0.5));
 printf('   T(1,0)     = %.4f\n', TP(1,0));
-Tgrid = reshape(Tf, nx, ny);                        % Tgrid(i,j)
-T025 = interp2(xcoord, ycoord, Tgrid', 0.25, 0.25, 'linear');
+T025 = interp2(xcoord, ycoord, reshape(Tf, nx, ny)', 0.25, 0.25, 'linear');
 printf('   T(0.25,0.25) = %.4f  (interpolacion bilineal)\n', T025);
 
 %% 3) Flujo en el centro
